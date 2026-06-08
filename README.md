@@ -12,4 +12,4 @@ This library was created primarily for [picovox](https://github.com/picovox/pico
 On a Raspberry Pi Pico 2 overclocked to 280 MHz, it performs well enough for real-time use, and there is likely still room for further optimization.
 
 ## Licencing
-Although the original Nuked OPL2 Lite uses LGPL, the Nuked OPL3 fast uses GPL, therefore this whole library is also released under GPL.
+Since both the original Nuked OPL2 Lite and Nuked OPL3 fast use LGPL, this whole library is also released under LGPL.
