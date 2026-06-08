@@ -31,6 +31,7 @@
 
 #include <string.h>
 #include "opl2.h"
+#include "wf_rom.h"
 
 #define RSM_FRAC    10
 
@@ -48,10 +49,20 @@ enum {
     egk_drum = 0x02
 };
 
+/* OPL2_HOT_IN_RAM places hot functions and tables in RAM; no-ops otherwise. */
+#ifdef OPL2_HOT_IN_RAM
+#define OPL2_RAM_TABLE __attribute__((section(".data.opl2_table")))
+#define OPL2_HOT       __attribute__((section(".time_critical"))) __attribute__((hot))
+#define OPL2_FORCE_INLINE __attribute__((always_inline)) inline
+#else
+#define OPL2_RAM_TABLE
+#define OPL2_HOT
+#define OPL2_FORCE_INLINE inline
+#endif
 
 /*
     logsin table
-*/
+
 
 static const uint16_t logsinrom[256] = {
     0x859, 0x6c3, 0x607, 0x58b, 0x52e, 0x4e4, 0x4a6, 0x471,
@@ -87,44 +98,44 @@ static const uint16_t logsinrom[256] = {
     0x002, 0x001, 0x001, 0x001, 0x001, 0x001, 0x001, 0x001,
     0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000, 0x000
 };
-
+*/
 /*
     exp table
 */
-
+OPL2_RAM_TABLE
 static const uint16_t exprom[256] = {
-    0x7fa, 0x7f5, 0x7ef, 0x7ea, 0x7e4, 0x7df, 0x7da, 0x7d4,
-    0x7cf, 0x7c9, 0x7c4, 0x7bf, 0x7b9, 0x7b4, 0x7ae, 0x7a9,
-    0x7a4, 0x79f, 0x799, 0x794, 0x78f, 0x78a, 0x784, 0x77f,
-    0x77a, 0x775, 0x770, 0x76a, 0x765, 0x760, 0x75b, 0x756,
-    0x751, 0x74c, 0x747, 0x742, 0x73d, 0x738, 0x733, 0x72e,
-    0x729, 0x724, 0x71f, 0x71a, 0x715, 0x710, 0x70b, 0x706,
-    0x702, 0x6fd, 0x6f8, 0x6f3, 0x6ee, 0x6e9, 0x6e5, 0x6e0,
-    0x6db, 0x6d6, 0x6d2, 0x6cd, 0x6c8, 0x6c4, 0x6bf, 0x6ba,
-    0x6b5, 0x6b1, 0x6ac, 0x6a8, 0x6a3, 0x69e, 0x69a, 0x695,
-    0x691, 0x68c, 0x688, 0x683, 0x67f, 0x67a, 0x676, 0x671,
-    0x66d, 0x668, 0x664, 0x65f, 0x65b, 0x657, 0x652, 0x64e,
-    0x649, 0x645, 0x641, 0x63c, 0x638, 0x634, 0x630, 0x62b,
-    0x627, 0x623, 0x61e, 0x61a, 0x616, 0x612, 0x60e, 0x609,
-    0x605, 0x601, 0x5fd, 0x5f9, 0x5f5, 0x5f0, 0x5ec, 0x5e8,
-    0x5e4, 0x5e0, 0x5dc, 0x5d8, 0x5d4, 0x5d0, 0x5cc, 0x5c8,
-    0x5c4, 0x5c0, 0x5bc, 0x5b8, 0x5b4, 0x5b0, 0x5ac, 0x5a8,
-    0x5a4, 0x5a0, 0x59c, 0x599, 0x595, 0x591, 0x58d, 0x589,
-    0x585, 0x581, 0x57e, 0x57a, 0x576, 0x572, 0x56f, 0x56b,
-    0x567, 0x563, 0x560, 0x55c, 0x558, 0x554, 0x551, 0x54d,
-    0x549, 0x546, 0x542, 0x53e, 0x53b, 0x537, 0x534, 0x530,
-    0x52c, 0x529, 0x525, 0x522, 0x51e, 0x51b, 0x517, 0x514,
-    0x510, 0x50c, 0x509, 0x506, 0x502, 0x4ff, 0x4fb, 0x4f8,
-    0x4f4, 0x4f1, 0x4ed, 0x4ea, 0x4e7, 0x4e3, 0x4e0, 0x4dc,
-    0x4d9, 0x4d6, 0x4d2, 0x4cf, 0x4cc, 0x4c8, 0x4c5, 0x4c2,
-    0x4be, 0x4bb, 0x4b8, 0x4b5, 0x4b1, 0x4ae, 0x4ab, 0x4a8,
-    0x4a4, 0x4a1, 0x49e, 0x49b, 0x498, 0x494, 0x491, 0x48e,
-    0x48b, 0x488, 0x485, 0x482, 0x47e, 0x47b, 0x478, 0x475,
-    0x472, 0x46f, 0x46c, 0x469, 0x466, 0x463, 0x460, 0x45d,
-    0x45a, 0x457, 0x454, 0x451, 0x44e, 0x44b, 0x448, 0x445,
-    0x442, 0x43f, 0x43c, 0x439, 0x436, 0x433, 0x430, 0x42d,
-    0x42a, 0x428, 0x425, 0x422, 0x41f, 0x41c, 0x419, 0x416,
-    0x414, 0x411, 0x40e, 0x40b, 0x408, 0x406, 0x403, 0x400
+    0xff4, 0xfea, 0xfde, 0xfd4, 0xfc8, 0xfbe, 0xfb4, 0xfa8,
+    0xf9e, 0xf92, 0xf88, 0xf7e, 0xf72, 0xf68, 0xf5c, 0xf52,
+    0xf48, 0xf3e, 0xf32, 0xf28, 0xf1e, 0xf14, 0xf08, 0xefe,
+    0xef4, 0xeea, 0xee0, 0xed4, 0xeca, 0xec0, 0xeb6, 0xeac,
+    0xea2, 0xe98, 0xe8e, 0xe84, 0xe7a, 0xe70, 0xe66, 0xe5c,
+    0xe52, 0xe48, 0xe3e, 0xe34, 0xe2a, 0xe20, 0xe16, 0xe0c,
+    0xe04, 0xdfa, 0xdf0, 0xde6, 0xddc, 0xdd2, 0xdca, 0xdc0,
+    0xdb6, 0xdac, 0xda4, 0xd9a, 0xd90, 0xd88, 0xd7e, 0xd74,
+    0xd6a, 0xd62, 0xd58, 0xd50, 0xd46, 0xd3c, 0xd34, 0xd2a,
+    0xd22, 0xd18, 0xd10, 0xd06, 0xcfe, 0xcf4, 0xcec, 0xce2,
+    0xcda, 0xcd0, 0xcc8, 0xcbe, 0xcb6, 0xcae, 0xca4, 0xc9c,
+    0xc92, 0xc8a, 0xc82, 0xc78, 0xc70, 0xc68, 0xc60, 0xc56,
+    0xc4e, 0xc46, 0xc3c, 0xc34, 0xc2c, 0xc24, 0xc1c, 0xc12,
+    0xc0a, 0xc02, 0xbfa, 0xbf2, 0xbea, 0xbe0, 0xbd8, 0xbd0,
+    0xbc8, 0xbc0, 0xbb8, 0xbb0, 0xba8, 0xba0, 0xb98, 0xb90,
+    0xb88, 0xb80, 0xb78, 0xb70, 0xb68, 0xb60, 0xb58, 0xb50,
+    0xb48, 0xb40, 0xb38, 0xb32, 0xb2a, 0xb22, 0xb1a, 0xb12,
+    0xb0a, 0xb02, 0xafc, 0xaf4, 0xaec, 0xae4, 0xade, 0xad6,
+    0xace, 0xac6, 0xac0, 0xab8, 0xab0, 0xaa8, 0xaa2, 0xa9a,
+    0xa92, 0xa8c, 0xa84, 0xa7c, 0xa76, 0xa6e, 0xa68, 0xa60,
+    0xa58, 0xa52, 0xa4a, 0xa44, 0xa3c, 0xa36, 0xa2e, 0xa28,
+    0xa20, 0xa18, 0xa12, 0xa0c, 0xa04, 0x9fe, 0x9f6, 0x9f0,
+    0x9e8, 0x9e2, 0x9da, 0x9d4, 0x9ce, 0x9c6, 0x9c0, 0x9b8,
+    0x9b2, 0x9ac, 0x9a4, 0x99e, 0x998, 0x990, 0x98a, 0x984,
+    0x97c, 0x976, 0x970, 0x96a, 0x962, 0x95c, 0x956, 0x950,
+    0x948, 0x942, 0x93c, 0x936, 0x930, 0x928, 0x922, 0x91c,
+    0x916, 0x910, 0x90a, 0x904, 0x8fc, 0x8f6, 0x8f0, 0x8ea,
+    0x8e4, 0x8de, 0x8d8, 0x8d2, 0x8cc, 0x8c6, 0x8c0, 0x8ba,
+    0x8b4, 0x8ae, 0x8a8, 0x8a2, 0x89c, 0x896, 0x890, 0x88a,
+    0x884, 0x87e, 0x878, 0x872, 0x86c, 0x866, 0x860, 0x85a,
+    0x854, 0x850, 0x84a, 0x844, 0x83e, 0x838, 0x832, 0x82c,
+    0x828, 0x822, 0x81c, 0x816, 0x810, 0x80c, 0x806, 0x800,
 };
 
 /*
@@ -185,90 +196,6 @@ static const uint8_t ch_slot[9] = {
     Envelope generator
 */
 
-typedef int16_t(*envelope_sinfunc)(uint16_t phase, uint16_t envelope);
-typedef void(*envelope_genfunc)(opl2_slot *slott);
-
-static int16_t OPL2_EnvelopeCalcExp(uint32_t level)
-{
-    if (level > 0x1fff)
-    {
-        level = 0x1fff;
-    }
-    return (exprom[level & 0xffu] << 1) >> (level >> 8);
-}
-
-static int16_t OPL2_EnvelopeCalcSin0(uint16_t phase, uint16_t envelope)
-{
-    uint16_t out = 0;
-    uint16_t neg = 0;
-    if (phase & 0x200)
-    {
-        neg = 0xffff;
-    }
-    if (phase & 0x100)
-    {
-        out = logsinrom[(phase & 0xffu) ^ 0xffu];
-    }
-    else
-    {
-        out = logsinrom[phase & 0xffu];
-    }
-    return OPL2_EnvelopeCalcExp(out + (envelope << 3)) ^ neg;
-}
-
-static int16_t OPL2_EnvelopeCalcSin1(uint16_t phase, uint16_t envelope)
-{
-    uint16_t out = 0;
-    if (phase & 0x200)
-    {
-        out = 0x1000;
-    }
-    else if (phase & 0x100)
-    {
-        out = logsinrom[(phase & 0xffu) ^ 0xffu];
-    }
-    else
-    {
-        out = logsinrom[phase & 0xffu];
-    }
-    return OPL2_EnvelopeCalcExp(out + (envelope << 3));
-}
-
-static int16_t OPL2_EnvelopeCalcSin2(uint16_t phase, uint16_t envelope)
-{
-    uint16_t out = 0;
-    if (phase & 0x100)
-    {
-        out = logsinrom[(phase & 0xffu) ^ 0xffu];
-    }
-    else
-    {
-        out = logsinrom[phase & 0xffu];
-    }
-    return OPL2_EnvelopeCalcExp(out + (envelope << 3));
-}
-
-static int16_t OPL2_EnvelopeCalcSin3(uint16_t phase, uint16_t envelope)
-{
-    uint16_t out = 0;
-    if (phase & 0x100)
-    {
-        out = 0x1000;
-    }
-    else
-    {
-        out = logsinrom[phase & 0xffu];
-    }
-    return OPL2_EnvelopeCalcExp(out + (envelope << 3));
-}
-
-static const envelope_sinfunc envelope_sin[4] = {
-    OPL2_EnvelopeCalcSin0,
-    OPL2_EnvelopeCalcSin1,
-    OPL2_EnvelopeCalcSin2,
-    OPL2_EnvelopeCalcSin3,
-};
-
 enum envelope_gen_num
 {
     envelope_gen_num_attack = 0,
@@ -277,7 +204,7 @@ enum envelope_gen_num
     envelope_gen_num_release = 3
 };
 
-static void OPL2_EnvelopeUpdateKSL(opl2_slot *slot)
+OPL2_HOT static void OPL2_EnvelopeUpdateKSL(opl2_slot *slot)
 {
     int16_t ksl = (kslrom[slot->channel->f_num >> 6u] << 2)
                - ((0x08 - slot->channel->block) << 5);
@@ -286,60 +213,67 @@ static void OPL2_EnvelopeUpdateKSL(opl2_slot *slot)
         ksl = 0;
     }
     slot->eg_ksl = (uint8_t)ksl;
+	/* Refresh the cached (reg_tl << 2) + (eg_ksl >> kslshift[reg_ksl])
+     * sum used by OPL3_EnvelopeCalc. Both reg_tl/reg_ksl-driven changes
+     * (via SlotWrite40, which calls this function) and eg_ksl-driven
+     * changes (f_num/block updates via Channel{A0,B0}) flow through
+     * here, so this covers all dirty cases. */
+    slot->eg_tl_ksl = (uint16_t)((slot->reg_tl << 2)
+                              + (slot->eg_ksl >> kslshift[slot->reg_ksl]));
 }
 
-static void OPL2_EnvelopeCalc(opl2_slot *slot)
+OPL2_HOT static void OPL2_EnvelopeUpdateRate(opl2_slot *slot)
+{
+    uint8_t ii;
+
+    slot->eg_ks = slot->channel->ksv >> ((slot->reg_ksr ^ 1) << 1);
+    for (ii = 0; ii < 4; ii++)
+    {
+        uint8_t rate = slot->eg_ks + (slot->eg_rates[ii] << 2);
+        uint8_t rate_hi = rate >> 2;
+        if (rate_hi & 0x10)
+        {
+            rate_hi = 0x0f;
+        }
+        slot->eg_rate_hi[ii] = rate_hi;
+        slot->eg_rate_lo[ii] = rate & 0x03;
+    }
+}
+
+OPL2_HOT static void OPL2_EnvelopeCalc(opl2_slot *slot)
 {
     uint8_t nonzero;
-    uint8_t rate;
     uint8_t rate_hi;
     uint8_t rate_lo;
     uint8_t reg_rate = 0;
-    uint8_t ks;
     uint8_t eg_shift, shift;
     uint16_t eg_rout;
     int16_t eg_inc;
     uint8_t eg_off;
     uint8_t reset = 0;
     uint8_t key;
-    slot->eg_out = slot->eg_rout + (slot->reg_tl << 2)
-                 + (slot->eg_ksl >> kslshift[slot->reg_ksl]) + *slot->trem;
+    slot->eg_out = slot->eg_rout + slot->eg_tl_ksl + *slot->trem;
     key = slot->key | slot->chip->csm_kon;
     if (key && slot->eg_gen == envelope_gen_num_release)
     {
         reset = 1;
-        reg_rate = slot->reg_ar;
+        reg_rate = slot->eg_rates[0];
     }
     else
     {
-        switch (slot->eg_gen)
-        {
-        case envelope_gen_num_attack:
-            reg_rate = slot->reg_ar;
-            break;
-        case envelope_gen_num_decay:
-            reg_rate = slot->reg_dr;
-            break;
-        case envelope_gen_num_sustain:
-            if (!slot->reg_type)
-            {
-                reg_rate = slot->reg_rr;
-            }
-            break;
-        case envelope_gen_num_release:
-            reg_rate = slot->reg_rr;
-            break;
-        }
+        reg_rate = slot->eg_rates[slot->eg_gen];
     }
     slot->pg_reset = reset;
-    ks = slot->channel->ksv >> ((slot->reg_ksr ^ 1) << 1);
     nonzero = (reg_rate != 0);
-    rate = ks + (reg_rate << 2);
-    rate_hi = rate >> 2;
-    rate_lo = rate & 0x03;
-    if (rate_hi & 0x10)
+    if (reset)
     {
-        rate_hi = 0x0f;
+        rate_hi = slot->eg_rate_hi[0];
+        rate_lo = slot->eg_rate_lo[0];
+    }
+    else
+    {
+        rate_hi = slot->eg_rate_hi[slot->eg_gen];
+        rate_lo = slot->eg_rate_lo[slot->eg_gen];
     }
     eg_shift = rate_hi + slot->chip->eg_add;
     shift = 0;
@@ -452,21 +386,29 @@ static void OPL2_EnvelopeKeyOff(opl2_slot *slot, uint8_t type)
     Phase Generator
 */
 
-static void OPL2_PhaseGenerate(opl2_slot *slot)
+static void OPL2_PhaseUpdateInc(opl2_slot *slot)
+{
+    uint32_t basefreq = ((uint32_t)slot->channel->f_num << slot->channel->block) >> 1;
+    slot->pg_inc = (basefreq * mt[slot->reg_mult]) >> 1;
+}
+
+OPL2_HOT static void OPL2_PhaseGenerate(opl2_slot *slot)
 {
     opl2_chip *chip;
     uint16_t f_num;
     uint32_t basefreq;
+	uint32_t phaseinc;
     uint8_t rm_xor, n_bit;
     uint32_t noise;
     uint16_t phase;
 
     chip = slot->chip;
-    f_num = slot->channel->f_num;
     if (slot->reg_vib)
     {
         int8_t range;
         uint8_t vibpos;
+		
+		f_num = slot->channel->f_num;
 
         range = (f_num >> 7) & 7;
         vibpos = slot->chip->vibpos;
@@ -486,37 +428,34 @@ static void OPL2_PhaseGenerate(opl2_slot *slot)
             range = -range;
         }
         f_num += range;
+		basefreq = (f_num << slot->channel->block) >> 1;
+        phaseinc = (basefreq * mt[slot->reg_mult]) >> 1;
     }
-    basefreq = (f_num << slot->channel->block) >> 1;
+	else
+    {
+        phaseinc = slot->pg_inc;
+    }
     phase = (uint16_t)(slot->pg_phase >> 9);
     if (slot->pg_reset)
     {
         slot->pg_phase = 0;
     }
-    slot->pg_phase += (basefreq * mt[slot->reg_mult]) >> 1;
+	slot->pg_phase += phaseinc;
     /* Rhythm mode */
     noise = chip->noise;
     slot->pg_phase_out = phase;
-    if (slot->slot_num == 13) /* hh */
+    switch (slot->slot_num)
     {
+    case 13: /* hh */
         chip->rm_hh_bit2 = (phase >> 2) & 1;
         chip->rm_hh_bit3 = (phase >> 3) & 1;
         chip->rm_hh_bit7 = (phase >> 7) & 1;
         chip->rm_hh_bit8 = (phase >> 8) & 1;
-    }
-    if (slot->slot_num == 17 && (chip->rhy & 0x20)) /* tc */
-    {
-        chip->rm_tc_bit3 = (phase >> 3) & 1;
-        chip->rm_tc_bit5 = (phase >> 5) & 1;
-    }
-    if (chip->rhy & 0x20)
-    {
-        rm_xor = (chip->rm_hh_bit2 ^ chip->rm_hh_bit7)
-               | (chip->rm_hh_bit3 ^ chip->rm_tc_bit5)
-               | (chip->rm_tc_bit3 ^ chip->rm_tc_bit5);
-        switch (slot->slot_num)
+        if (chip->rhy & 0x20)
         {
-        case 13: /* hh */
+            rm_xor = (chip->rm_hh_bit2 ^ chip->rm_hh_bit7)
+                   | (chip->rm_hh_bit3 ^ chip->rm_tc_bit5)
+                   | (chip->rm_tc_bit3 ^ chip->rm_tc_bit5);
             slot->pg_phase_out = rm_xor << 9;
             if (rm_xor ^ (noise & 1))
             {
@@ -526,17 +465,28 @@ static void OPL2_PhaseGenerate(opl2_slot *slot)
             {
                 slot->pg_phase_out |= 0x34;
             }
-            break;
-        case 16: /* sd */
+        }
+        break;
+    case 16: /* sd */
+        if (chip->rhy & 0x20)
+        {
             slot->pg_phase_out = (chip->rm_hh_bit8 << 9)
                                | ((chip->rm_hh_bit8 ^ (noise & 1)) << 8);
-            break;
-        case 17: /* tc */
-            slot->pg_phase_out = (rm_xor << 9) | 0x100;
-            break;
-        default:
-            break;
         }
+        break;
+    case 17: /* tc */
+        if (chip->rhy & 0x20)
+        {
+            chip->rm_tc_bit3 = (phase >> 3) & 1;
+            chip->rm_tc_bit5 = (phase >> 5) & 1;
+            rm_xor = (chip->rm_hh_bit2 ^ chip->rm_hh_bit7)
+                   | (chip->rm_hh_bit3 ^ chip->rm_tc_bit5)
+                   | (chip->rm_tc_bit3 ^ chip->rm_tc_bit5);
+            slot->pg_phase_out = (rm_xor << 9) | 0x100;
+        }
+        break;
+    default:
+        break;
     }
     n_bit = ((noise >> 14) ^ noise) & 0x01;
     chip->noise = (noise >> 1) | (n_bit << 22);
@@ -558,8 +508,11 @@ static void OPL2_SlotWrite20(opl2_slot *slot, uint8_t data)
     }
     slot->reg_vib = (data >> 6) & 0x01;
     slot->reg_type = (data >> 5) & 0x01;
+	slot->eg_rates[2] = slot->reg_type ? 0 : slot->reg_rr;
     slot->reg_ksr = (data >> 4) & 0x01;
     slot->reg_mult = data & 0x0f;
+	OPL2_EnvelopeUpdateRate(slot);
+    OPL2_PhaseUpdateInc(slot);
 }
 
 static void OPL2_SlotWrite40(opl2_slot *slot, uint8_t data)
@@ -573,6 +526,9 @@ static void OPL2_SlotWrite60(opl2_slot *slot, uint8_t data)
 {
     slot->reg_ar = (data >> 4) & 0x0f;
     slot->reg_dr = data & 0x0f;
+	slot->eg_rates[0] = slot->reg_ar;
+    slot->eg_rates[1] = slot->reg_dr;
+    OPL2_EnvelopeUpdateRate(slot);
 }
 
 static void OPL2_SlotWrite80(opl2_slot *slot, uint8_t data)
@@ -583,6 +539,9 @@ static void OPL2_SlotWrite80(opl2_slot *slot, uint8_t data)
         slot->reg_sl = 0x1f;
     }
     slot->reg_rr = data & 0x0f;
+    slot->eg_rates[2] = slot->reg_type ? 0 : slot->reg_rr;
+    slot->eg_rates[3] = slot->reg_rr;
+    OPL2_EnvelopeUpdateRate(slot);
 }
 
 static void OPL2_SlotWriteE0(opl2_slot *slot, uint8_t data)
@@ -591,12 +550,32 @@ static void OPL2_SlotWriteE0(opl2_slot *slot, uint8_t data)
         slot->reg_wf = data & 0x03;
 }
 
-static void OPL2_SlotGenerate(opl2_slot *slot)
+static OPL2_FORCE_INLINE void OPL2_SlotGenerate(opl2_slot *slot)
 {
-    slot->out = envelope_sin[slot->reg_wf](slot->pg_phase_out + *slot->mod, slot->eg_out);
+    uint16_t phase = slot->pg_phase_out + *slot->mod;
+    uint16_t envelope = slot->eg_out;
+    uint16_t wf_data = logsin_wf[slot->reg_wf][phase & 0x3ff];
+    uint16_t neg = (uint16_t)(((int16_t)wf_data) >> 15);
+    uint32_t level = (wf_data & 0x7fff) + (envelope << 3);
+    if (level > 0x1fff)
+    {
+        level = 0x1fff;
+    }
+    slot->out = ((exprom[level & 0xffu] >> (level >> 8)) ^ neg);
 }
 
-static void OPL2_SlotCalcFB(opl2_slot *slot)
+/* Silent-regime variant: when the caller has proven eg_out >= 0x180, the
+ * exprom lookup always reads through to zero (max exprom value 0xff4 >> 12
+ * = 0), so the final out reduces to just the sign bit of wf_data. Skips a
+ * load, an add, a clamp, a shift, and a xor. */
+static OPL2_FORCE_INLINE void OPL2_SlotGenerateSilent(opl2_slot *slot)
+{
+    uint16_t phase = slot->pg_phase_out + *slot->mod;
+    uint16_t wf_data = logsin_wf[slot->reg_wf][phase & 0x3ff];
+    slot->out = (int16_t)wf_data >> 15;
+}
+
+static OPL2_FORCE_INLINE void OPL2_SlotCalcFB(opl2_slot *slot)
 {
     if (slot->channel->fb != 0x00)
     {
@@ -702,6 +681,10 @@ static void OPL2_ChannelWriteA0(opl2_channel *channel, uint8_t data)
                  | ((channel->f_num >> (0x09 - channel->chip->nts)) & 0x01);
     OPL2_EnvelopeUpdateKSL(channel->slotz[0]);
     OPL2_EnvelopeUpdateKSL(channel->slotz[1]);
+	OPL2_EnvelopeUpdateRate(channel->slotz[0]);
+    OPL2_EnvelopeUpdateRate(channel->slotz[1]);
+    OPL2_PhaseUpdateInc(channel->slotz[0]);
+    OPL2_PhaseUpdateInc(channel->slotz[1]);
 }
 
 static void OPL2_ChannelKeyOn(opl2_channel* channel)
@@ -724,6 +707,10 @@ static void OPL2_ChannelWriteB0(opl2_channel *channel, uint8_t data)
                  | ((channel->f_num >> (0x09 - channel->chip->nts)) & 0x01);
     OPL2_EnvelopeUpdateKSL(channel->slotz[0]);
     OPL2_EnvelopeUpdateKSL(channel->slotz[1]);
+	OPL2_EnvelopeUpdateRate(channel->slotz[0]);
+    OPL2_EnvelopeUpdateRate(channel->slotz[1]);
+    OPL2_PhaseUpdateInc(channel->slotz[0]);
+    OPL2_PhaseUpdateInc(channel->slotz[1]);
     if (data & 0x20)
         OPL2_ChannelKeyOn(channel);
     else
@@ -787,7 +774,7 @@ static void OPL2_UpdateChannelParams(opl2_chip *chip, uint8_t slot)
     }
 }
 
-static void OPL2_ProcessSlot(opl2_slot *slot)
+static OPL2_FORCE_INLINE void OPL2_ProcessSlot(opl2_slot *slot)
 {
     OPL2_SlotCalcFB(slot);
     OPL2_EnvelopeCalc(slot);
@@ -858,7 +845,7 @@ static int16_t OPL2_OutputCrush(int32_t sample)
     return (int16_t)sample;
 }
 
-void OPL2_Generate(opl2_chip *chip, int16_t * sample)
+OPL2_HOT void OPL2_Generate(opl2_chip *chip, int16_t * sample)
 {
     opl2_writebuf *writebuf;
     int32_t mix;
@@ -1056,7 +1043,7 @@ void OPL2_Reset(opl2_chip *chip, uint32_t samplerate)
     chip->vibshift = 1;
 }
 
-void OPL2_WriteReg(opl2_chip *chip, uint8_t reg, uint8_t v)
+OPL2_HOT void OPL2_WriteReg(opl2_chip *chip, uint8_t reg, uint8_t v)
 {
     uint8_t regm = reg & 0xff;
     switch (regm & 0xf0)
@@ -1167,7 +1154,7 @@ void OPL2_WriteReg(opl2_chip *chip, uint8_t reg, uint8_t v)
     }
 }
 
-void OPL2_WriteRegBuffered(opl2_chip *chip, uint8_t reg, uint8_t v)
+OPL2_HOT void OPL2_WriteRegBuffered(opl2_chip *chip, uint8_t reg, uint8_t v)
 {
     uint64_t time1, time2;
     opl2_writebuf *writebuf;

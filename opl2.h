@@ -51,15 +51,23 @@ struct _opl2_slot {
     int16_t out;
     int16_t fbmod;
     int16_t *mod;
+    uint8_t *trem;
+    uint32_t pg_reset;
+    uint32_t pg_phase;
+    uint32_t pg_inc;
     int16_t prout;
     uint16_t eg_rout;
     uint16_t eg_out;
+    /* Cached (reg_tl << 2) + (eg_ksl >> kslshift[reg_ksl]); maintained by
+     * OPL3_EnvelopeUpdateKSL whenever any of those inputs change. Hoists
+     * a load + lookup + shift out of the per-sample envelope hot path. */
+    uint16_t eg_tl_ksl;
     uint8_t eg_inc;
     uint8_t eg_gen;
     uint8_t eg_rate;
     uint8_t eg_ksl;
+	uint8_t eg_ks;
     uint8_t eg_mute;
-    uint8_t *trem;
     uint8_t reg_vib;
     uint8_t reg_type;
     uint8_t reg_ksr;
@@ -72,10 +80,11 @@ struct _opl2_slot {
     uint8_t reg_rr;
     uint8_t reg_wf;
     uint8_t key;
-    uint32_t pg_reset;
-    uint32_t pg_phase;
     uint16_t pg_phase_out;
     uint8_t slot_num;
+	uint8_t eg_rates[4];
+    uint8_t eg_rate_hi[4];
+    uint8_t eg_rate_lo[4];
 };
 
 struct _opl2_channel {
@@ -114,6 +123,7 @@ struct _opl2_chip {
     uint8_t tremolo;
     uint8_t tremolopos;
     uint8_t tremoloshift;
+	uint8_t tremolo_dirty;
     uint32_t noise;
     int16_t zeromod;
     int32_t mixbuff;
