@@ -966,6 +966,7 @@ OPL2_HOT void OPL2_Generate(opl2_chip *chip, int16_t * sample)
     int32_t mix;
     uint8_t ii;
     uint8_t shift;
+    uint8_t update_tremolo;
 
     *sample = OPL2_OutputCrush(chip->mixbuff);
 
@@ -1041,17 +1042,27 @@ OPL2_HOT void OPL2_Generate(opl2_chip *chip, int16_t * sample)
 
     OPL2_ProcessTimers(chip);
 
+    update_tremolo = chip->tremolo_dirty;
     if ((chip->timer & 0x3f) == 0x3f)
     {
-        chip->tremolopos = (chip->tremolopos + 1) % 210;
+        chip->tremolopos++;
+        if (chip->tremolopos == 210)
+        {
+            chip->tremolopos = 0;
+        }
+        update_tremolo = 1;
     }
-    if (chip->tremolopos < 105)
+    if (update_tremolo)
     {
-        chip->tremolo = chip->tremolopos >> chip->tremoloshift;
-    }
-    else
-    {
-        chip->tremolo = (210 - chip->tremolopos) >> chip->tremoloshift;
+        if (chip->tremolopos < 105)
+        {
+            chip->tremolo = chip->tremolopos >> chip->tremoloshift;
+        }
+        else
+        {
+            chip->tremolo = (210 - chip->tremolopos) >> chip->tremoloshift;
+        }
+        chip->tremolo_dirty = 0;
     }
 
     if ((chip->timer & 0x3ff) == 0x3ff)
@@ -1249,7 +1260,12 @@ OPL2_HOT void OPL2_WriteReg(opl2_chip *chip, uint8_t reg, uint8_t v)
     case 0xb0:
         if (regm == 0xbd)
         {
-            chip->tremoloshift = (((v >> 7) ^ 1) << 1) + 2;
+            uint8_t tremoloshift = (((v >> 7) ^ 1) << 1) + 2;
+            if (chip->tremoloshift != tremoloshift)
+            {
+                chip->tremolo_dirty = 1;
+            }
+            chip->tremoloshift = tremoloshift;
             chip->vibshift = ((v >> 6) & 0x01) ^ 1;
             OPL2_ChannelUpdateRhythm(chip, v);
         }
